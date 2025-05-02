@@ -1,2 +1,309 @@
 # c_Managing-Database-Instance_Startup
 c_Managing-Database-Instance_Startup
+
+
+
+Oracle - Managing the Database Instance
+---------------------------------------------------		
+	
+##############################################################################
+Starting Up an Oracle Database Instance
+##############################################################################
+01. Shutdown
+	-let's shutdown the instance
+	SQL> shutdown immediate
+	Database closed.
+	Database dismounted.
+	ORACLE instance shut down.
+
+02. No Mount
+    -restart instance on nomount stage
+	SQL> startup nomount
+	ORACLE instance started.
+
+	Total System Global Area 4294963272 bytes
+	Fixed Size                  8904776 bytes
+	Variable Size            2365587456 bytes
+	Database Buffers         1912602624 bytes
+	Redo Buffers                7868416 bytes
+
+    -Let's see the status for instance
+	SQL> select status from v$instance;
+
+	STATUS
+	------------
+	STARTED
+	
+	Note: When database is in nomount, 
+		=> our database instance is created by reading the spfile file.
+		=> Allocating the SGA
+		=> Starting the backgound Processes
+		=> Opening the alert<SID>.ora and the trace file
+	
+03. Mount
+
+	-Now we will mount
+	SQL> alter database mount;
+
+	Database altered.
+	
+	Note: Mounting a database includes the following...
+	=>Associating a database with a previous started instance
+	=>Locating and opening all the control files speficied in the parameter file
+	=>Reading the control files to obtain the names and statuses of the data files and online redo log files.
+	=>Allows to perform specific maintenance operations...
+		a) Renaming data files.
+		b) Enabling and Disabling online redo logc) 
+		c) Performing Full database backup
+		
+	-Let's see the status for instance
+	SQL> select status from v$instance;
+
+	STATUS
+	------------
+	MOUNTED
+		
+04. Open
+	-Let's open the database instance
+	
+	SQL> alter database open;
+
+	Database altered.
+
+	-Now check the status of database Instance
+	
+	SQL> select status from v$instance;
+
+	STATUS
+	------------
+	OPEN
+	
+	
+	SQL> select OPEN_MODE,LOG_MODE from v$database;
+
+	OPEN_MODE            LOG_MODE
+	-------------------- ------------
+	READ WRITE           NOARCHIVELOG
+
+	
+	Note: Opening the database includes the following:
+		=> A normal database operation means that an instance is started and the database is mounted and opened. 
+	    
+		=> Any valid user can connect to the database and perform typical data access operations.
+	
+		=> Opening the data files
+		
+		=> Opening the online redo log files
+		
+		=> If any of the data files or online redo log files are not present when you attempt to open the
+		   database, the Oracle server returns an error.
+		
+		=> During this final stage, the Oracle server verifies that all data files and online redo log files can
+		   be opened, and checks the consistency of the database. 
+		
+		=> If necessary, the System Monitor	(SMON) background process initiates instance recovery.
+		
+		=> You can start up a database instance in restricted mode so that only Oracle Database users
+		   with the RESTRICTED SESSION system privilege can connect to the database.
+
+	More Example:
+	If you want to database in read only then execute the command in mounting phase. But to do this you must 
+	restart at mount mode the database instance first. let's see...
+	
+	SQL> alter database open read only;
+	alter database open read only
+	*
+	ERROR at line 1:
+	ORA-01531: a database already open by the instance
+	
+	-So we need to go at mounting phase. To do this we need to shutdown then startup
+	SQL> shutdown immediate
+	
+	SQL> startup mount
+	ORACLE instance started.
+
+	Total System Global Area 2466249672 bytes
+	Fixed Size                  8899528 bytes
+	Variable Size             536870912 bytes
+	Database Buffers         1912602624 bytes
+	Redo Buffers                7876608 bytes
+	Database mounted.
+	SQL> alter database open read only;
+
+	Database altered.
+
+	SQL> select OPEN_MODE,LOG_MODE from v$database;
+
+	OPEN_MODE            LOG_MODE
+	-------------------- ------------
+	READ ONLY            NOARCHIVELOG
+
+	SQL> shutdown immediate;
+	Database closed.
+	Database dismounted.
+	ORACLE instance shut down.
+	SQL> startup
+	ORACLE instance started.
+
+	Total System Global Area 2466249672 bytes
+	Fixed Size                  8899528 bytes
+	Variable Size             536870912 bytes
+	Database Buffers         1912602624 bytes
+	Redo Buffers                7876608 bytes
+	Database mounted. 
+	Database opened.
+	
+	- sample....
+	STARTUP NOMOUNT
+	STARTUP MOUNT =>ALTER DATABASE OPEN READ ONLY;
+	STARTUP
+	
+	- RESTRICTED SESSION system privilege
+	
+	-shutdown immediate
+	SQL> shutdown immediate;
+	Database closed.
+	Database dismounted.
+	ORACLE instance shut down.
+
+	-startup
+	SQL> startup
+	ORACLE instance started.
+
+	Total System Global Area 2466249672 bytes
+	Fixed Size                  8899528 bytes
+	Variable Size             536870912 bytes
+	Database Buffers         1912602624 bytes
+	Redo Buffers                7876608 bytes
+	Database mounted.
+	Database opened.
+	
+	-create user a
+	SQL> create user a identified by a;
+
+	User created.
+
+	-create user b
+	SQL> create user b identified by b;
+
+	User created.
+
+	-grant create session to a,b
+	SQL> grant create session to a,b;
+
+	Grant succeeded.
+
+	-grant restricted session to a
+	SQL> grant restricted session to a;
+
+	Grant succeeded.
+
+	-shutdown again
+	SQL> shutdown immediate
+	Database closed.
+	Database dismounted.
+	ORACLE instance shut down.
+	
+	-startup restrict
+	SQL> startup restrict
+	ORACLE instance started.
+
+	Total System Global Area 2466249672 bytes
+	Fixed Size                  8899528 bytes
+	Variable Size             536870912 bytes
+	Database Buffers         1912602624 bytes
+	Redo Buffers                7876608 bytes
+	Database mounted.
+	Database opened.
+
+	-connect by a user
+	[oracle@dba167 ~]$ sqlplus a/a
+
+	SQL*Plus: Release 19.0.0.0.0 - Production on Tue Jun 21 18:54:26 2022
+	Version 19.3.0.0.0
+
+	Copyright (c) 1982, 2019, Oracle.  All rights reserved.
+
+
+	Connected to:
+	Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+	Version 19.3.0.0.0
+
+	SQL> show user
+	USER is "A"
+	
+	-connect by b user
+	[oracle@dba167 ~]$ sqlplus b/b;
+
+	SQL*Plus: Release 19.0.0.0.0 - Production on Tue Jun 21 18:55:32 2022
+	Version 19.3.0.0.0
+
+	Copyright (c) 1982, 2019, Oracle.  All rights reserved.
+
+	ERROR:
+	ORA-01035: ORACLE only available to users with RESTRICTED SESSION privilege
+
+	-Now we will disable the restricted session for all users
+	SQL> alter system disable restricted session;
+
+	System altered.
+	
+	-connect by b user again
+	[oracle@dba167 ~]$ sqlplus b/b
+
+	SQL*Plus: Release 19.0.0.0.0 - Production on Tue Jun 21 18:57:31 2022
+	Version 19.3.0.0.0
+
+	Copyright (c) 1982, 2019, Oracle.  All rights reserved.
+
+
+	Connected to:
+	Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+	Version 19.3.0.0.0
+	
+	-We can able to enable restricted session on database open mode
+	SQL> alter system enable restricted session;
+
+	System altered.
+	
+	-Note: So user can access to connect with valid credentials
+	
+	
+	-Let's restrict specific user 
+	SQL> select username,sid,serial# from v$session where username is not null
+	SQL> set lines 200 pages 100
+	SQL> col username for a30;
+	SQL> l
+	  1* select username,sid,serial# from v$session where username is not null
+	SQL> /
+
+	USERNAME                              SID    SERIAL#
+	------------------------------ ---------- ----------
+	SYS                                     6      29325
+	B                                      38      20926
+	SYS                                   256      15136
+	SYSRAC                                257      14697
+	A                                     265      32511
+
+	-alter system kill session for user B with SID and SERIAL
+	SQL> alter system kill session '38,20926';
+
+	System altered.
+	
+	-from user B
+	SQL> select *from dual;
+	select *from dual
+	*
+	ERROR at line 1:
+	ORA-00028: your session has been killed
+	
+	-Now we will disable the restricted session for all users again
+	SQL> alter system disable restricted session;
+	
+	-now connect with b user
+	SQL> conn b/b
+	Connected.
+	
+	
+	
+	
